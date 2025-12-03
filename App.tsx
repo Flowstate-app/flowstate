@@ -1,122 +1,87 @@
-// App.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import Purchases from 'react-native-purchases';
 
-// Theme Provider
-import { ThemeProvider } from './src/contexts/ThemeContext';
-
-// Custom Splash Screen
-import SplashScreen from './src/components/SplashScreen';
-
 // Screens
 import TimerScreen from './src/screens/TimerScreen';
-import AnalyticsScreen from './src/screens/AnalyticsScreen';
 import AchievementsScreen from './src/screens/AchievementsScreen';
+import AnalyticsScreen from './src/screens/AnalyticsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
-import ThemeSettingsScreen from './src/screens/ThemeSettingsScreen';
 import ComingSoonScreen from './src/screens/ComingSoonScreen';
 
+// Contexts
+import { ThemeProvider } from './src/contexts/ThemeContext';
+
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
-
-function SettingsStack() {
-  return (
-    <Stack.Navigator>
-      <Stack.Screen 
-        name="SettingsMain" 
-        component={SettingsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="ThemeSettings" 
-        component={ThemeSettingsScreen}
-        options={{ 
-          headerTitle: 'Themes',
-          headerBackTitle: 'Back'
-        }}
-      />
-      <Stack.Screen 
-        name="ComingSoon" 
-        component={ComingSoonScreen}
-        options={{ 
-          headerTitle: 'Coming Soon',
-          headerBackTitle: 'Back'
-        }}
-      />
-    </Stack.Navigator>
-  );
-}
-
-function MainTabs() {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
-          if (route.name === 'Focus') {
-            iconName = 'clock';
-          } else if (route.name === 'Stats') {
-            iconName = 'bar-chart-2';
-          } else if (route.name === 'Rewards') {
-            iconName = 'star';
-          } else if (route.name === 'Settings') {
-            iconName = 'settings';
-          }
-          return <Feather name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#3B82F6',
-        tabBarInactiveTintColor: 'gray',
-        headerShown: false,
-        tabBarStyle: {
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
-        },
-      })}
-    >
-      <Tab.Screen name="Focus" component={TimerScreen} />
-      <Tab.Screen name="Stats" component={AnalyticsScreen} />
-      <Tab.Screen name="Rewards" component={AchievementsScreen} />
-      <Tab.Screen name="Settings" component={SettingsStack} />
-    </Tab.Navigator>
-  );
-}
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
-
   useEffect(() => {
-    // Configure RevenueCat
-    const configureRevenueCat = async () => {
+    // Initialize RevenueCat
+    const initializeRevenueCat = async () => {
       try {
-        // iOS API Key - replace with your production key
-        const apiKey = 'appl_LMPXepgH4mOj2LEwb2PMbQz2NQX';
+        console.log('🚀 Initializing RevenueCat...');
+        await Purchases.configure({ 
+          apiKey: 'appl_LMPXepgH4mOj2LEwb2PMbQz2NQX'
+        });
+        console.log('✅ RevenueCat initialized successfully');
         
-        await Purchases.configure({ apiKey });
-        console.log('RevenueCat configured successfully');
+        // Log customer info for debugging
+        const customerInfo = await Purchases.getCustomerInfo();
+        console.log('👤 Customer Info:', {
+          activeEntitlements: Object.keys(customerInfo.entitlements.active),
+          originalAppUserId: customerInfo.originalAppUserId,
+        });
       } catch (error) {
-        console.error('Error configuring RevenueCat:', error);
+        console.error('❌ Error initializing RevenueCat:', error);
       }
     };
 
-    configureRevenueCat();
+    initializeRevenueCat();
   }, []);
 
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
   return (
-    <ThemeProvider>
-      <NavigationContainer>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <NavigationContainer>
+          <Tab.Navigator
+            screenOptions={({ route }) => ({
+              tabBarIcon: ({ focused, color, size }) => {
+                let iconName: string;
+
+                if (route.name === 'Timer') {
+                  iconName = 'clock';
+                } else if (route.name === 'Progress') {
+                  iconName = 'trending-up';
+                } else if (route.name === 'Analytics') {
+                  iconName = 'bar-chart-2';
+                } else if (route.name === 'Settings') {
+                  iconName = 'settings';
+                } else if (route.name === 'Coming Soon') {
+                  iconName = 'star';
+                } else {
+                  iconName = 'circle';
+                }
+
+                return <Feather name={iconName as any} size={size} color={color} />;
+              },
+              tabBarActiveTintColor: '#667eea',
+              tabBarInactiveTintColor: 'gray',
+              headerShown: false,
+            })}
+          >
+            <Tab.Screen name="Timer" component={TimerScreen} />
+            <Tab.Screen name="Progress" component={AchievementsScreen} />
+            <Tab.Screen name="Analytics" component={AnalyticsScreen} />
+            <Tab.Screen name="Coming Soon" component={ComingSoonScreen} />
+            <Tab.Screen name="Settings" component={SettingsScreen} />
+          </Tab.Navigator>
+        </NavigationContainer>
         <StatusBar style="auto" />
-        <MainTabs />
-      </NavigationContainer>
-    </ThemeProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

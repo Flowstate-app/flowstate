@@ -2,7 +2,7 @@
   "expo": {
     "name": "FlowState",
     "slug": "flowstate",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.taormin.flowstate",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",
@@ -31,19 +31,18 @@
       "package": "com.taormin.flowstate"
     },
     "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "deploymentTarget": "15.1"
-          }
+      "expo-build-properties",
+      {
+        "ios": {
+          "useFrameworks": "static"
         }
-      ]
+      }
     ],
     "extra": {
       "eas": {
         "projectId": "d187f969-1b90-4f06-a19a-aca2535c9217"
       }
-    }
+    },
+    "owner": "thetaorminateam"
   }
 }

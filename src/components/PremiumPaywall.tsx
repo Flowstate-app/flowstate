@@ -32,32 +32,59 @@ export default function PremiumPaywall({ onClose, onSuccess }: Props) {
 
   const loadOfferings = async () => {
     try {
+      console.log('🔄 Loading RevenueCat offerings...');
       const offerings = await Purchases.getOfferings();
+      
+      console.log('📦 Offerings response:', offerings);
+      
       if (offerings.current !== null && offerings.current.availablePackages.length > 0) {
         setPackages(offerings.current.availablePackages);
-        console.log('Loaded packages:', offerings.current.availablePackages.length);
+        console.log('✅ Successfully loaded', offerings.current.availablePackages.length, 'packages');
+        console.log('📋 Package identifiers:', offerings.current.availablePackages.map(p => p.identifier));
       } else {
-        console.log('No offerings available');
+        console.warn('⚠️ No current offering available');
+        console.log('All offerings:', Object.keys(offerings.all));
       }
     } catch (error) {
-      console.error('Error loading offerings:', error);
-      Alert.alert('Error', 'Failed to load subscription options. Please try again.');
+      console.error('❌ Error loading offerings:', error);
+      // Don't block the UI - user can still see prices and try to purchase
     } finally {
       setLoadingPackages(false);
     }
   };
 
   const getPackageByIdentifier = (identifier: string): PurchasesPackage | undefined => {
-    return packages.find(pkg => 
-      pkg.identifier === `$rc_${identifier}` || 
-      pkg.product.identifier.includes(identifier)
+    // Try exact match first
+    let pkg = packages.find(p => p.identifier === `$rc_${identifier}`);
+    if (pkg) return pkg;
+    
+    // Try product identifier match
+    pkg = packages.find(p => p.product.identifier.toLowerCase().includes(identifier));
+    if (pkg) return pkg;
+    
+    // Try any package with similar name
+    pkg = packages.find(p => 
+      p.identifier.toLowerCase().includes(identifier) ||
+      p.product.title.toLowerCase().includes(identifier)
     );
+    
+    return pkg;
   };
 
   const getPrice = (planType: PlanType): string => {
     const pkg = getPackageByIdentifier(planType);
-    return pkg?.product.priceString || 
-      (planType === 'lifetime' ? '$79.99' : planType === 'annual' ? '$49.99' : '$9.99');
+    if (pkg?.product.priceString) {
+      return pkg.product.priceString;
+    }
+    
+    // Fallback prices
+    const fallbackPrices = {
+      lifetime: '$79.99',
+      annual: '$49.99',
+      monthly: '$9.99'
+    };
+    
+    return fallbackPrices[planType];
   };
 
   const plans = {
@@ -88,26 +115,54 @@ export default function PremiumPaywall({ onClose, onSuccess }: Props) {
     setLoading(true);
     
     try {
+      console.log('🛒 Starting purchase for:', selectedPlan);
+      
       const pkg = getPackageByIdentifier(selectedPlan);
       
       if (!pkg) {
-        Alert.alert('Error', 'Selected plan not available. Please try another plan.');
+        console.error('❌ No package found for:', selectedPlan);
+        console.log('Available packages:', packages.map(p => ({
+          id: p.identifier,
+          product: p.product.identifier
+        })));
+        
+        Alert.alert(
+          'Unable to Purchase', 
+          'This subscription option is temporarily unavailable. Please try another option or contact support.',
+          [{ text: 'OK' }]
+        );
         setLoading(false);
         return;
       }
 
+      console.log('📦 Purchasing package:', pkg.identifier);
       const purchaseResult = await Purchases.purchasePackage(pkg);
+      
+      console.log('✅ Purchase successful!');
+      console.log('Entitlements:', Object.keys(purchaseResult.customerInfo.entitlements.active));
       
       // Check if user now has premium entitlement
       if (purchaseResult.customerInfo.entitlements.active['FlowState: Keep Your Focus Premium']) {
+        console.log('🎉 Premium unlocked!');
         onSuccess();
         Alert.alert('Success!', 'Premium unlocked! 🎉');
+      } else {
+        console.warn('⚠️ Purchase completed but premium not active');
+        // Still call onSuccess since purchase went through
+        onSuccess();
       }
       
     } catch (error: any) {
+      console.error('❌ Purchase error:', error);
+      
       if (!error.userCancelled) {
-        Alert.alert('Error', 'Purchase failed. Please try again.');
-        console.error('Purchase error:', error);
+        Alert.alert(
+          'Purchase Failed', 
+          'Unable to complete your purchase. Please check your payment method and try again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        console.log('ℹ️ User cancelled purchase');
       }
     } finally {
       setLoading(false);
@@ -118,17 +173,30 @@ export default function PremiumPaywall({ onClose, onSuccess }: Props) {
     setLoading(true);
     
     try {
+      console.log('🔄 Restoring purchases...');
       const restoreResult = await Purchases.restorePurchases();
       
+      console.log('Restored entitlements:', Object.keys(restoreResult.entitlements.active));
+      
       if (restoreResult.entitlements.active['FlowState: Keep Your Focus Premium']) {
+        console.log('✅ Premium restored!');
         onSuccess();
         Alert.alert('Restored!', 'Premium restored successfully! 🎉');
       } else {
-        Alert.alert('No Purchases Found', 'We couldn\'t find any previous purchases to restore.');
+        console.log('ℹ️ No purchases to restore');
+        Alert.alert(
+          'No Purchases Found', 
+          'We couldn\'t find any previous purchases to restore. If you believe this is an error, please contact support.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to restore purchases. Please try again.');
-      console.error('Restore error:', error);
+      console.error('❌ Restore error:', error);
+      Alert.alert(
+        'Restore Failed', 
+        'Unable to restore purchases. Please try again or contact support.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLoading(false);
     }
@@ -220,7 +288,7 @@ export default function PremiumPaywall({ onClose, onSuccess }: Props) {
         <TouchableOpacity
           style={styles.ctaButton}
           onPress={handlePurchase}
-          disabled={loading || packages.length === 0}
+          disabled={loading}
         >
           <LinearGradient
             colors={['#3B82F6', '#8B5CF6']}
