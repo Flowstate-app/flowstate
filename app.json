@@ -16,10 +16,7 @@
       "bundleIdentifier": "com.taormin.flowstate",
       "buildNumber": "3",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio",
-          "audio"
-        ],
+        "UIBackgroundModes": ["audio"],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -31,12 +28,14 @@
       "package": "com.taormin.flowstate"
     },
     "plugins": [
-      "expo-build-properties",
-      {
-        "ios": {
-          "useFrameworks": "static"
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
-      }
+      ]
     ],
     "extra": {
       "eas": {

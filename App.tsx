@@ -4,7 +4,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
-import Purchases from 'react-native-purchases';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+import { Platform } from 'react-native';
 
 // Screens
 import TimerScreen from './src/screens/TimerScreen';
@@ -20,23 +21,33 @@ const Tab = createBottomTabNavigator();
 
 export default function App() {
   useEffect(() => {
-    // Initialize RevenueCat
     const initializeRevenueCat = async () => {
       try {
         console.log('🚀 Initializing RevenueCat...');
-        await Purchases.configure({ 
-          apiKey: 'appl_LMPXepgH4mOj2LEwb2PMbQz2NQX'
-        });
-        console.log('✅ RevenueCat initialized successfully');
         
-        // Log customer info for debugging
-        const customerInfo = await Purchases.getCustomerInfo();
-        console.log('👤 Customer Info:', {
-          activeEntitlements: Object.keys(customerInfo.entitlements.active),
-          originalAppUserId: customerInfo.originalAppUserId,
-        });
+        // Enable debug logs
+        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+        
+        // Configure RevenueCat
+        if (Platform.OS === 'ios') {
+          await Purchases.configure({ 
+            apiKey: 'appl_LMPXepgH4mOj2LEwb2PMbQz2NQX'
+          });
+          console.log('✅ RevenueCat configured successfully');
+          
+          // Get customer info to verify
+          const customerInfo = await Purchases.getCustomerInfo();
+          console.log('👤 Customer ID:', customerInfo.originalAppUserId);
+          
+          // Try to get offerings
+          const offerings = await Purchases.getOfferings();
+          console.log('📦 Offerings loaded:', offerings.current?.identifier || 'none');
+          if (offerings.current) {
+            console.log('📋 Available packages:', offerings.current.availablePackages.length);
+          }
+        }
       } catch (error) {
-        console.error('❌ Error initializing RevenueCat:', error);
+        console.error('❌ RevenueCat initialization error:', error);
       }
     };
 
